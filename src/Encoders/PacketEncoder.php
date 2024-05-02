@@ -24,6 +24,7 @@
 namespace hollodotme\FastCGI\Encoders;
 
 use hollodotme\FastCGI\Interfaces\EncodesPacket;
+use hollodotme\FastCGI\Exceptions\ReadFailedException;
 use function chr;
 use function ord;
 use function strlen;
@@ -58,9 +59,20 @@ final class PacketEncoder implements EncodesPacket
 	 */
 	public function decodeHeader( string $data ) : array
 	{
+		if (strlen($data) < 7) {
+			throw new ReadFailedException( 'FCGI packet too short' );
+		}
+		$version = ord( $data[0] );
+		if ($version != 1) {
+			throw new ReadFailedException( 'Unsupported FCGI Version: ' . $version );
+		}
+		$type = ord( $data[1] );
+		if ($type > 11) { // FCGI_MAXTYPE
+			throw new ReadFailedException( 'Unsupported FCGI Packet type: ' . $type );
+		}
 		return [
-			'version'       => ord( $data[0] ),
-			'type'          => ord( $data[1] ),
+			'version'       => $version,
+			'type'          => $type,
 			'requestId'     => (ord( $data[2] ) << 8) + ord( $data[3] ),
 			'contentLength' => (ord( $data[4] ) << 8) + ord( $data[5] ),
 			'paddingLength' => ord( $data[6] ),
